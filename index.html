@@ -236,6 +236,25 @@
             font-family: inherit;
         }
 
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        input[type="file"]:hover {
+            border-color: #667eea;
+        }
+
+        .image-preview {
+            margin-top: 10px;
+            max-width: 100%;
+            border-radius: 8px;
+            display: none;
+        }
+
         .modal-actions {
             display: flex;
             gap: 10px;
@@ -291,6 +310,12 @@
             text-align: center;
         }
 
+        .file-info {
+            margin-top: 5px;
+            font-size: 12px;
+            color: #999;
+        }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 2em;
@@ -337,9 +362,10 @@
                     <input type="text" id="boxName" placeholder="Inserisci un nome..." required>
                 </div>
                 <div class="form-group">
-                    <label for="boxImageUrl">URL Immagine (opzionale)</label>
-                    <input type="text" id="boxImageUrl" placeholder="https://esempio.com/immagine.jpg">
-                    <small style="color: #999;">Usa un link diretto a un'immagine</small>
+                    <label for="boxImage">Immagine (opzionale)</label>
+                    <input type="file" id="boxImage" accept="image/*">
+                    <div class="file-info">📷 Seleziona un'immagine dal tuo dispositivo</div>
+                    <img id="imagePreview" class="image-preview" alt="Anteprima">
                 </div>
                 <div class="form-group">
                     <label for="boxText">Testo</label>
@@ -367,6 +393,7 @@
             appId: "1:313142872582:web:536482c1ba839e6f9d5187"
         };
 
+
         // Verifica se Firebase è configurato
         const isConfigured = firebaseConfig.apiKey !== "TUA_API_KEY";
 
@@ -377,179 +404,207 @@
                 <strong>⚠️ Firebase non configurato!</strong><br>
                 Leggi il file README.md per le istruzioni su come configurare Firebase.
             `;
-	}
-        
+        } else {
+            // Importa Firebase
+            const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+            const { getDatabase, ref, onValue, push, set, remove } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
 
-        // Importa Firebase
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, onValue, push, set, remove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+            // Inizializza Firebase
+            const app = initializeApp(firebaseConfig);
+            const database = getDatabase(app);
+            const boxesRef = ref(database, 'boxes');
 
-        // Inizializza Firebase
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        const boxesRef = ref(database, 'boxes');
+            let editingKey = null;
+            let currentImageData = null;
 
-        let editingKey = null;
-
-        // Aggiorna stato connessione
-        function updateConnectionStatus(connected) {
-            const status = document.getElementById('connectionStatus');
-            const addBtn = document.getElementById('addBtn');
-            if (connected) {
-                status.className = 'status connected';
-                status.textContent = '✅ Connesso';
-                addBtn.disabled = false;
-            } else {
-                status.className = 'status disconnected';
-                status.textContent = '❌ Disconnesso';
-                addBtn.disabled = true;
+            // Aggiorna stato connessione
+            function updateConnectionStatus(connected) {
+                const status = document.getElementById('connectionStatus');
+                const addBtn = document.getElementById('addBtn');
+                if (connected) {
+                    status.className = 'status connected';
+                    status.textContent = '✅ Connesso';
+                    addBtn.disabled = false;
+                } else {
+                    status.className = 'status disconnected';
+                    status.textContent = '❌ Disconnesso';
+                    addBtn.disabled = true;
+                }
             }
-        }
 
-        // Ascolta i cambiamenti in tempo reale
-        onValue(boxesRef, (snapshot) => {
-            document.getElementById('loading').style.display = 'none';
-            updateConnectionStatus(true);
-            
-            const data = snapshot.val();
-            const container = document.getElementById('boxesContainer');
-            const emptyState = document.getElementById('emptyState');
-            
-            container.innerHTML = '';
-            
-            if (data) {
-                container.style.display = 'grid';
-                emptyState.style.display = 'none';
+            // Ascolta i cambiamenti in tempo reale
+            onValue(boxesRef, (snapshot) => {
+                document.getElementById('loading').style.display = 'none';
+                updateConnectionStatus(true);
                 
-                Object.keys(data).forEach(key => {
-                    const box = data[key];
-                    const boxElement = document.createElement('div');
-                    boxElement.className = 'box';
+                const data = snapshot.val();
+                const container = document.getElementById('boxesContainer');
+                const emptyState = document.getElementById('emptyState');
+                
+                container.innerHTML = '';
+                
+                if (data) {
+                    container.style.display = 'grid';
+                    emptyState.style.display = 'none';
                     
-                    const date = new Date(box.timestamp).toLocaleString('it-IT');
-                    
-                    boxElement.innerHTML = `
-                        <div class="box-header">
-                            <div class="box-name">${escapeHtml(box.name)}</div>
-                            <div class="box-actions">
-                                <button class="btn edit-btn" onclick="window.editBox('${key}')">✏️</button>
-                                <button class="btn delete-btn" onclick="window.deleteBox('${key}')">🗑️</button>
+                    Object.keys(data).forEach(key => {
+                        const box = data[key];
+                        const boxElement = document.createElement('div');
+                        boxElement.className = 'box';
+                        
+                        const date = new Date(box.timestamp).toLocaleString('it-IT');
+                        
+                        boxElement.innerHTML = `
+                            <div class="box-header">
+                                <div class="box-name">${escapeHtml(box.name)}</div>
+                                <div class="box-actions">
+                                    <button class="btn edit-btn" onclick="window.editBox('${key}')">✏️</button>
+                                    <button class="btn delete-btn" onclick="window.deleteBox('${key}')">🗑️</button>
+                                </div>
                             </div>
-                        </div>
-                        ${box.imageUrl ? `<img src="${escapeHtml(box.imageUrl)}" class="box-image" alt="${escapeHtml(box.name)}" onerror="this.style.display='none'">` : '<div class="box-image"></div>'}
-                        <div class="box-text">${escapeHtml(box.text) || 'Nessun testo'}</div>
-                        <div class="box-meta">
-                            📅 Creato: ${date}
-                            ${box.author ? `<br>👤 Autore: ${escapeHtml(box.author)}` : ''}
-                        </div>
-                    `;
-                    container.appendChild(boxElement);
-                });
-            } else {
-                container.style.display = 'none';
-                emptyState.style.display = 'block';
-            }
-        }, (error) => {
-            console.error('Errore Firebase:', error);
-            updateConnectionStatus(false);
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('errorBanner').style.display = 'block';
-            document.getElementById('errorBanner').textContent = '❌ Errore di connessione: ' + error.message;
-        });
+                            ${box.image ? `<img src="${box.image}" class="box-image" alt="${escapeHtml(box.name)}" onerror="this.style.display='none'">` : '<div class="box-image"></div>'}
+                            <div class="box-text">${escapeHtml(box.text) || 'Nessun testo'}</div>
+                            <div class="box-meta">
+                                📅 Creato: ${date}
+                                ${box.author ? `<br>👤 Autore: ${escapeHtml(box.author)}` : ''}
+                            </div>
+                        `;
+                        container.appendChild(boxElement);
+                    });
+                } else {
+                    container.style.display = 'none';
+                    emptyState.style.display = 'block';
+                }
+            }, (error) => {
+                console.error('Errore Firebase:', error);
+                updateConnectionStatus(false);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('errorBanner').style.display = 'block';
+                document.getElementById('errorBanner').textContent = '❌ Errore di connessione: ' + error.message;
+            });
 
-        // Funzioni globali
-        window.openModal = function(key = null) {
-            editingKey = key;
-            const modal = document.getElementById('modal');
-            const form = document.getElementById('boxForm');
-            const title = document.getElementById('modalTitle');
-            
-            form.reset();
-            
-            if (key) {
-                title.textContent = 'Modifica Box';
-                // Carica dati esistenti
-                onValue(ref(database, `boxes/${key}`), (snapshot) => {
-                    const box = snapshot.val();
-                    if (box) {
-                        document.getElementById('boxName').value = box.name;
-                        document.getElementById('boxImageUrl').value = box.imageUrl || '';
-                        document.getElementById('boxText').value = box.text || '';
+            // Gestione upload immagine
+            document.getElementById('boxImage').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    // Controlla dimensione (max 5MB consigliato per Firebase)
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('⚠️ Immagine troppo grande! Usa un\'immagine sotto i 5MB.');
+                        this.value = '';
+                        return;
                     }
-                }, { onlyOnce: true });
-            } else {
-                title.textContent = 'Nuovo Box';
-            }
-            
-            modal.classList.add('active');
-        };
 
-        window.closeModal = function() {
-            document.getElementById('modal').classList.remove('active');
-            editingKey = null;
-        };
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        currentImageData = event.target.result;
+                        const preview = document.getElementById('imagePreview');
+                        preview.src = currentImageData;
+                        preview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
 
-        window.editBox = function(key) {
-            window.openModal(key);
-        };
-
-        window.deleteBox = function(key) {
-            if (confirm('Sei sicuro di voler eliminare questo box? Questa azione è permanente.')) {
-                remove(ref(database, `boxes/${key}`));
-            }
-        };
-
-        // Salva box
-        document.getElementById('boxForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const name = document.getElementById('boxName').value;
-            const imageUrl = document.getElementById('boxImageUrl').value;
-            const text = document.getElementById('boxText').value;
-            
-            // Genera un nome autore casuale o usa uno esistente
-            let author = localStorage.getItem('boxManagerAuthor');
-            if (!author) {
-                author = 'Utente_' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('boxManagerAuthor', author);
-            }
-            
-            const boxData = {
-                name: name,
-                text: text,
-                imageUrl: imageUrl,
-                author: author,
-                timestamp: Date.now()
+            // Funzioni globali
+            window.openModal = function(key = null) {
+                editingKey = key;
+                currentImageData = null;
+                const modal = document.getElementById('modal');
+                const form = document.getElementById('boxForm');
+                const title = document.getElementById('modalTitle');
+                const preview = document.getElementById('imagePreview');
+                
+                form.reset();
+                preview.style.display = 'none';
+                
+                if (key) {
+                    title.textContent = 'Modifica Box';
+                    // Carica dati esistenti
+                    onValue(ref(database, `boxes/${key}`), (snapshot) => {
+                        const box = snapshot.val();
+                        if (box) {
+                            document.getElementById('boxName').value = box.name;
+                            document.getElementById('boxText').value = box.text || '';
+                            if (box.image) {
+                                currentImageData = box.image;
+                                preview.src = box.image;
+                                preview.style.display = 'block';
+                            }
+                        }
+                    }, { onlyOnce: true });
+                } else {
+                    title.textContent = 'Nuovo Box';
+                }
+                
+                modal.classList.add('active');
             };
-            
-            if (editingKey) {
-                set(ref(database, `boxes/${editingKey}`), boxData);
-            } else {
-                push(boxesRef, boxData);
-            }
-            
-            window.closeModal();
-        });
 
-        // Chiudi modal cliccando fuori
-        document.getElementById('modal').addEventListener('click', function(e) {
-            if (e.target === this) {
+            window.closeModal = function() {
+                document.getElementById('modal').classList.remove('active');
+                editingKey = null;
+                currentImageData = null;
+            };
+
+            window.editBox = function(key) {
+                window.openModal(key);
+            };
+
+            window.deleteBox = function(key) {
+                if (confirm('Sei sicuro di voler eliminare questo box? Questa azione è permanente.')) {
+                    remove(ref(database, `boxes/${key}`));
+                }
+            };
+
+            // Salva box
+            document.getElementById('boxForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const name = document.getElementById('boxName').value;
+                const text = document.getElementById('boxText').value;
+                
+                // Genera un nome autore casuale o usa uno esistente
+                let author = localStorage.getItem('boxManagerAuthor');
+                if (!author) {
+                    author = 'Utente_' + Math.random().toString(36).substr(2, 9);
+                    localStorage.setItem('boxManagerAuthor', author);
+                }
+                
+                const boxData = {
+                    name: name,
+                    text: text,
+                    image: currentImageData || '',
+                    author: author,
+                    timestamp: Date.now()
+                };
+                
+                if (editingKey) {
+                    set(ref(database, `boxes/${editingKey}`), boxData);
+                } else {
+                    push(boxesRef, boxData);
+                }
+                
                 window.closeModal();
-            }
-        });
+            });
 
-        // Funzione di escape HTML
-        function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return text ? String(text).replace(/[&<>"']/g, m => map[m]) : '';
+            // Chiudi modal cliccando fuori
+            document.getElementById('modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    window.closeModal();
+                }
+            });
+
+            // Funzione di escape HTML
+            function escapeHtml(text) {
+                const map = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                };
+                return text ? String(text).replace(/[&<>"']/g, m => map[m]) : '';
+            }
         }
-    
     </script>
 </body>
 </html>
