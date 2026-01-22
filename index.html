@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Box Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .status.connected {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status.disconnected {
+            background: #f44336;
+            color: white;
+        }
+
+        .add-box-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+            margin-bottom: 30px;
+        }
+
+        .add-box-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .add-box-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .boxes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .box {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            transition: transform 0.3s;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .box:hover {
+            transform: translateY(-5px);
+        }
+
+        .box-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .box-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .box-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .edit-btn {
+            background: #2196F3;
+            color: white;
+        }
+
+        .edit-btn:hover {
+            background: #0b7dda;
+        }
+
+        .delete-btn {
+            background: #f44336;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background: #da190b;
+        }
+
+        .box-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            background: #f0f0f0;
+        }
+
+        .box-text {
+            color: #666;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .box-meta {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .save-btn {
+            flex: 1;
+            background: #4CAF50;
+            color: white;
+            padding: 12px;
+        }
+
+        .save-btn:hover {
+            background: #45a049;
+        }
+
+        .cancel-btn {
+            flex: 1;
+            background: #9e9e9e;
+            color: white;
+            padding: 12px;
+        }
+
+        .cancel-btn:hover {
+            background: #757575;
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            padding: 40px;
+            font-size: 1.2em;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: white;
+            padding: 60px 20px;
+        }
+
+        .empty-state h2 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .error-banner {
+            background: #f44336;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .boxes-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📦 Shared Box Manager</h1>
+            <p>Collabora in tempo reale con tutti</p>
+            <div id="connectionStatus" class="status disconnected">⚠️ Configurazione Firebase necessaria</div>
+        </header>
+
+        <div id="errorBanner" class="error-banner" style="display: none;"></div>
+
+        <center>
+            <button class="add-box-btn" id="addBtn" onclick="openModal()" disabled>➕ Aggiungi Nuovo Box</button>
+        </center>
+
+        <div id="loading" class="loading">Caricamento...</div>
+        <div id="boxesContainer" class="boxes-grid" style="display: none;"></div>
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <h2>Nessun box ancora</h2>
+            <p>Clicca sul pulsante sopra per creare il primo box!</p>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-header" id="modalTitle">Nuovo Box</h2>
+            <form id="boxForm">
+                <div class="form-group">
+                    <label for="boxName">Nome del Box</label>
+                    <input type="text" id="boxName" placeholder="Inserisci un nome..." required>
+                </div>
+                <div class="form-group">
+                    <label for="boxImageUrl">URL Immagine (opzionale)</label>
+                    <input type="text" id="boxImageUrl" placeholder="https://esempio.com/immagine.jpg">
+                    <small style="color: #999;">Usa un link diretto a un'immagine</small>
+                </div>
+                <div class="form-group">
+                    <label for="boxText">Testo</label>
+                    <textarea id="boxText" placeholder="Inserisci il testo..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn save-btn">💾 Salva</button>
+                    <button type="button" class="btn cancel-btn" onclick="closeModal()">❌ Annulla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // ⚠️ IMPORTANTE: Sostituisci questi valori con la tua configurazione Firebase
+        // Segui le istruzioni nel README per ottenere questi dati
+        const firebaseConfig = {
+            apiKey: "TUA_API_KEY",
+            authDomain: "tuo-progetto.firebaseapp.com",
+            databaseURL: "https://tuo-progetto-default-rtdb.firebaseio.com",
+            projectId: "tuo-progetto",
+            storageBucket: "tuo-progetto.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
+
+        // Verifica se Firebase è configurato
+        const isConfigured = firebaseConfig.apiKey !== "TUA_API_KEY";
+
+        if (!isConfigured) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('errorBanner').style.display = 'block';
+            document.getElementById('errorBanner').innerHTML = `
+                <strong>⚠️ Firebase non configurato!</strong><br>
+                Leggi il file README.md per le istruzioni su come configurare Firebase.
+            `;
+            return;
+        }
+
+        // Importa Firebase
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, onValue, push, set, remove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // Inizializza Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const boxesRef = ref(database, 'boxes');
+
+        let editingKey = null;
+
+        // Aggiorna stato connessione
+        function updateConnectionStatus(connected) {
+            const status = document.getElementById('connectionStatus');
+            const addBtn = document.getElementById('addBtn');
+            if (connected) {
+                status.className = 'status connected';
+                status.textContent = '✅ Connesso';
+                addBtn.disabled = false;
+            } else {
+                status.className = 'status disconnected';
+                status.textContent = '❌ Disconnesso';
+                addBtn.disabled = true;
+            }
+        }
+
+        // Ascolta i cambiamenti in tempo reale
+        onValue(boxesRef, (snapshot) => {
+            document.getElementById('loading').style.display = 'none';
+            updateConnectionStatus(true);
+            
+            const data = snapshot.val();
+            const container = document.getElementById('boxesContainer');
+            const emptyState = document.getElementById('emptyState');
+            
+            container.innerHTML = '';
+            
+            if (data) {
+                container.style.display = 'grid';
+                emptyState.style.display = 'none';
+                
+                Object.keys(data).forEach(key => {
+                    const box = data[key];
+                    const boxElement = document.createElement('div');
+                    boxElement.className = 'box';
+                    
+                    const date = new Date(box.timestamp).toLocaleString('it-IT');
+                    
+                    boxElement.innerHTML = `
+                        <div class="box-header">
+                            <div class="box-name">${escapeHtml(box.name)}</div>
+                            <div class="box-actions">
+                                <button class="btn edit-btn" onclick="window.editBox('${key}')">✏️</button>
+                                <button class="btn delete-btn" onclick="window.deleteBox('${key}')">🗑️</button>
+                            </div>
+                        </div>
+                        ${box.imageUrl ? `<img src="${escapeHtml(box.imageUrl)}" class="box-image" alt="${escapeHtml(box.name)}" onerror="this.style.display='none'">` : '<div class="box-image"></div>'}
+                        <div class="box-text">${escapeHtml(box.text) || 'Nessun testo'}</div>
+                        <div class="box-meta">
+                            📅 Creato: ${date}
+                            ${box.author ? `<br>👤 Autore: ${escapeHtml(box.author)}` : ''}
+                        </div>
+                    `;
+                    container.appendChild(boxElement);
+                });
+            } else {
+                container.style.display = 'none';
+                emptyState.style.display = 'block';
+            }
+        }, (error) => {
+            console.error('Errore Firebase:', error);
+            updateConnectionStatus(false);
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('errorBanner').style.display = 'block';
+            document.getElementById('errorBanner').textContent = '❌ Errore di connessione: ' + error.message;
+        });
+
+        // Funzioni globali
+        window.openModal = function(key = null) {
+            editingKey = key;
+            const modal = document.getElementById('modal');
+            const form = document.getElementById('boxForm');
+            const title = document.getElementById('modalTitle');
+            
+            form.reset();
+            
+            if (key) {
+                title.textContent = 'Modifica Box';
+                // Carica dati esistenti
+                onValue(ref(database, `boxes/${key}`), (snapshot) => {
+                    const box = snapshot.val();
+                    if (box) {
+                        document.getElementById('boxName').value = box.name;
+                        document.getElementById('boxImageUrl').value = box.imageUrl || '';
+                        document.getElementById('boxText').value = box.text || '';
+                    }
+                }, { onlyOnce: true });
+            } else {
+                title.textContent = 'Nuovo Box';
+            }
+            
+            modal.classList.add('active');
+        };
+
+        window.closeModal = function() {
+            document.getElementById('modal').classList.remove('active');
+            editingKey = null;
+        };
+
+        window.editBox = function(key) {
+            window.openModal(key);
+        };
+
+        window.deleteBox = function(key) {
+            if (confirm('Sei sicuro di voler eliminare questo box? Questa azione è permanente.')) {
+                remove(ref(database, `boxes/${key}`));
+            }
+        };
+
+        // Salva box
+        document.getElementById('boxForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('boxName').value;
+            const imageUrl = document.getElementById('boxImageUrl').value;
+            const text = document.getElementById('boxText').value;
+            
+            // Genera un nome autore casuale o usa uno esistente
+            let author = localStorage.getItem('boxManagerAuthor');
+            if (!author) {
+                author = 'Utente_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('boxManagerAuthor', author);
+            }
+            
+            const boxData = {
+                name: name,
+                text: text,
+                imageUrl: imageUrl,
+                author: author,
+                timestamp: Date.now()
+            };
+            
+            if (editingKey) {
+                set(ref(database, `boxes/${editingKey}`), boxData);
+            } else {
+                push(boxesRef, boxData);
+            }
+            
+            window.closeModal();
+        });
+
+        // Chiudi modal cliccando fuori
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                window.closeModal();
+            }
+        });
+
+        // Funzione di escape HTML
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text ? String(text).replace(/[&<>"']/g, m => map[m]) : '';
+        }
+    </script>
+</body>
+</html>
