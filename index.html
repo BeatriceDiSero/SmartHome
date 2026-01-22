@@ -373,10 +373,10 @@
         if (!isConfigured) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('errorBanner').style.display = 'block';
-            document.getElementById('errorBanner').innerHTML = `
+            document.getElementById('errorBanner').innerHTML = '
                 <strong>⚠️ Firebase non configurato!</strong><br>
                 Leggi il file README.md per le istruzioni su come configurare Firebase.
-            `;
+            ';
             return;
         }
 
