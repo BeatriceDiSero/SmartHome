@@ -377,8 +377,7 @@
                 <strong>⚠️ Firebase non configurato!</strong><br>
                 Leggi il file README.md per le istruzioni su come configurare Firebase.
             ';
-            return;
-        }
+        } else {
 
         // Importa Firebase
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -549,6 +548,7 @@
             };
             return text ? String(text).replace(/[&<>"']/g, m => map[m]) : '';
         }
+    }
     </script>
 </body>
 </html>
