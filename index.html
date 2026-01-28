@@ -52,6 +52,61 @@
             color: white;
         }
 
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 15px 50px 15px 20px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .search-box:focus {
+            outline: none;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            transform: translateY(-2px);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            color: #999;
+            pointer-events: none;
+        }
+
+        .clear-search {
+            position: absolute;
+            right: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #999;
+            cursor: pointer;
+            display: none;
+            padding: 5px;
+            transition: color 0.3s;
+        }
+
+        .clear-search:hover {
+            color: #666;
+        }
+
+        .clear-search.visible {
+            display: block;
+        }
+
         .add-box-btn {
             background: #4CAF50;
             color: white;
@@ -88,8 +143,10 @@
             border-radius: 15px;
             padding: 20px;
             box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            transition: transform 0.3s;
+            transition: transform 0.3s, box-shadow 0.3s;
             animation: fadeIn 0.5s;
+            cursor: move;
+            position: relative;
         }
 
         @keyframes fadeIn {
@@ -99,6 +156,33 @@
 
         .box:hover {
             transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.2);
+        }
+
+        .box.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+            cursor: grabbing;
+        }
+
+        .box.drag-over {
+            border: 3px dashed #667eea;
+            background: #f8f9ff;
+        }
+
+        .drag-handle {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            color: #ccc;
+            cursor: grab;
+            padding: 5px;
+            user-select: none;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
         }
 
         .box-header {
@@ -106,6 +190,7 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
+            padding-left: 35px;
         }
 
         .box-name {
@@ -148,11 +233,17 @@
 
         .box-image {
             width: 100%;
-            height: 200px;
+            height: 100px;
             object-fit: cover;
             border-radius: 10px;
             margin-bottom: 15px;
             background: #f0f0f0;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .box-image:hover {
+            transform: scale(1.02);
         }
 
         .box-text {
@@ -301,6 +392,18 @@
             margin-bottom: 10px;
         }
 
+        .no-results {
+            text-align: center;
+            color: white;
+            padding: 60px 20px;
+            display: none;
+        }
+
+        .no-results h2 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
         .error-banner {
             background: #f44336;
             color: white;
@@ -314,6 +417,62 @@
             margin-top: 5px;
             font-size: 12px;
             color: #999;
+        }
+
+        .result-count {
+            text-align: center;
+            color: white;
+            margin-bottom: 15px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            cursor: pointer;
+        }
+
+        .image-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .image-modal img {
+            max-width: 90%;
+            max-height: 90vh;
+            border-radius: 10px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+        }
+
+        .image-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            background: rgba(0,0,0,0.5);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+
+        .image-modal-close:hover {
+            background: rgba(0,0,0,0.8);
         }
 
         @media (max-width: 768px) {
@@ -341,6 +500,14 @@
 
         <div id="errorBanner" class="error-banner" style="display: none;"></div>
 
+        <div class="search-container">
+            <input type="text" id="searchBox" class="search-box" placeholder="🔍 Cerca nelle scatole...">
+            <button id="clearSearch" class="clear-search">✕</button>
+            <span class="search-icon">🔍</span>
+        </div>
+
+        <div id="resultCount" class="result-count" style="display: none;"></div>
+
         <center>
             <button class="add-box-btn" id="addBtn" onclick="openModal()" disabled>➕ Aggiungi Nuovo Box</button>
         </center>
@@ -350,6 +517,10 @@
         <div id="emptyState" class="empty-state" style="display: none;">
             <h2>Nessun box ancora</h2>
             <p>Clicca sul pulsante sopra per creare il primo box!</p>
+        </div>
+        <div id="noResults" class="no-results">
+            <h2>🔍 Nessun risultato</h2>
+            <p>Nessuna scatola corrisponde alla tua ricerca</p>
         </div>
     </div>
 
@@ -379,12 +550,17 @@
         </div>
     </div>
 
+    <div id="imageModal" class="image-modal">
+        <span class="image-modal-close" onclick="closeImageModal()">✕</span>
+        <img id="expandedImage" src="" alt="Immagine espansa">
+    </div>
+
     <!-- Firebase SDK -->
     <script type="module">
         // ⚠️ IMPORTANTE: Sostituisci questi valori con la tua configurazione Firebase
         // Segui le istruzioni nel README per ottenere questi dati
         const firebaseConfig = {
-            apiKey: "AIzaSyDUrqxd0g4QkDxzqXkhTEwuzrvX6pn4Iwk",
+           apiKey: "AIzaSyDUrqxd0g4QkDxzqXkhTEwuzrvX6pn4Iwk",
             authDomain: "box-manager-app.firebaseapp.com",
             databaseURL: "https://box-manager-app-default-rtdb.europe-west1.firebasedatabase.app",
             projectId: "box-manager-app",
@@ -416,6 +592,25 @@
 
             let editingKey = null;
             let currentImageData = null;
+            let allBoxes = {};
+            let searchTerm = '';
+            let draggedElement = null;
+            let boxOrder = [];
+
+            // Carica ordine salvato
+            const savedOrder = localStorage.getItem('boxOrder');
+            if (savedOrder) {
+                try {
+                    boxOrder = JSON.parse(savedOrder);
+                } catch (e) {
+                    boxOrder = [];
+                }
+            }
+
+            // Salva ordine
+            function saveOrder() {
+                localStorage.setItem('boxOrder', JSON.stringify(boxOrder));
+            }
 
             // Aggiorna stato connessione
             function updateConnectionStatus(connected) {
@@ -432,49 +627,215 @@
                 }
             }
 
+            // Filtra boxes
+            function filterBoxes(boxes, search) {
+                if (!search) return boxes;
+                
+                const searchLower = search.toLowerCase();
+                const filtered = {};
+                
+                Object.keys(boxes).forEach(key => {
+                    const box = boxes[key];
+                    const nameMatch = box.name.toLowerCase().includes(searchLower);
+                    const textMatch = (box.text || '').toLowerCase().includes(searchLower);
+                    
+                    if (nameMatch || textMatch) {
+                        filtered[key] = box;
+                    }
+                });
+                
+                return filtered;
+            }
+
+            // Ordina boxes
+            function sortBoxes(boxes) {
+                const keys = Object.keys(boxes);
+                
+                // Rimuovi chiavi non più esistenti dall'ordine salvato
+                boxOrder = boxOrder.filter(key => keys.includes(key));
+                
+                // Aggiungi nuove chiavi non presenti nell'ordine
+                keys.forEach(key => {
+                    if (!boxOrder.includes(key)) {
+                        boxOrder.push(key);
+                    }
+                });
+                
+                return boxOrder;
+            }
+
+            // Renderizza boxes
+            function renderBoxes() {
+                const container = document.getElementById('boxesContainer');
+                const emptyState = document.getElementById('emptyState');
+                const noResults = document.getElementById('noResults');
+                const resultCount = document.getElementById('resultCount');
+                
+                container.innerHTML = '';
+                
+                const filteredBoxes = filterBoxes(allBoxes, searchTerm);
+                const sortedKeys = sortBoxes(filteredBoxes);
+                
+                const hasBoxes = Object.keys(allBoxes).length > 0;
+                const hasFilteredBoxes = sortedKeys.length > 0;
+                
+                if (!hasBoxes) {
+                    container.style.display = 'none';
+                    emptyState.style.display = 'block';
+                    noResults.style.display = 'none';
+                    resultCount.style.display = 'none';
+                    return;
+                }
+                
+                if (!hasFilteredBoxes) {
+                    container.style.display = 'none';
+                    emptyState.style.display = 'none';
+                    noResults.style.display = 'block';
+                    resultCount.style.display = 'none';
+                    return;
+                }
+                
+                container.style.display = 'grid';
+                emptyState.style.display = 'none';
+                noResults.style.display = 'none';
+                
+                // Mostra conteggio risultati se c'è una ricerca attiva
+                if (searchTerm) {
+                    resultCount.style.display = 'block';
+                    const total = Object.keys(allBoxes).length;
+                    resultCount.textContent = `📊 Mostrati ${sortedKeys.length} di ${total} box`;
+                } else {
+                    resultCount.style.display = 'none';
+                }
+                
+                sortedKeys.forEach(key => {
+                    const box = filteredBoxes[key];
+                    const boxElement = document.createElement('div');
+                    boxElement.className = 'box';
+                    boxElement.draggable = true;
+                    boxElement.dataset.key = key;
+                    
+                    const date = new Date(box.timestamp).toLocaleString('it-IT');
+                    
+                    boxElement.innerHTML = `
+                        <div class="drag-handle">⋮⋮</div>
+                        <div class="box-header">
+                            <div class="box-name">${escapeHtml(box.name)}</div>
+                            <div class="box-actions">
+                                <button class="btn edit-btn" onclick="window.editBox('${key}')">✏️</button>
+                                <button class="btn delete-btn" onclick="window.deleteBox('${key}')">🗑️</button>
+                            </div>
+                        </div>
+                        ${box.image ? `<img src="${box.image}" class="box-image" alt="${escapeHtml(box.name)}" onerror="this.style.display='none'" onclick="event.stopPropagation(); window.expandImage('${box.image.replace(/'/g, "\\'")}')">` : '<div class="box-image"></div>'}
+                        <div class="box-text">${escapeHtml(box.text) || 'Nessun testo'}</div>
+                        <div class="box-meta">
+                            ✏️ Modificato: ${date}
+                        </div>
+                    `;
+                    
+                    // Drag and drop events
+                    boxElement.addEventListener('dragstart', handleDragStart);
+                    boxElement.addEventListener('dragend', handleDragEnd);
+                    boxElement.addEventListener('dragover', handleDragOver);
+                    boxElement.addEventListener('drop', handleDrop);
+                    boxElement.addEventListener('dragleave', handleDragLeave);
+                    
+                    container.appendChild(boxElement);
+                });
+            }
+
+            // Drag and drop handlers
+            function handleDragStart(e) {
+                draggedElement = this;
+                this.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', this.innerHTML);
+            }
+
+            function handleDragEnd(e) {
+                this.classList.remove('dragging');
+                document.querySelectorAll('.box').forEach(box => {
+                    box.classList.remove('drag-over');
+                });
+            }
+
+            function handleDragOver(e) {
+                if (e.preventDefault) {
+                    e.preventDefault();
+                }
+                e.dataTransfer.dropEffect = 'move';
+                
+                if (this !== draggedElement) {
+                    this.classList.add('drag-over');
+                }
+                
+                return false;
+            }
+
+            function handleDragLeave(e) {
+                this.classList.remove('drag-over');
+            }
+
+            function handleDrop(e) {
+                if (e.stopPropagation) {
+                    e.stopPropagation();
+                }
+                
+                if (draggedElement !== this) {
+                    const draggedKey = draggedElement.dataset.key;
+                    const targetKey = this.dataset.key;
+                    
+                    const draggedIndex = boxOrder.indexOf(draggedKey);
+                    const targetIndex = boxOrder.indexOf(targetKey);
+                    
+                    // Rimuovi elemento dalla posizione originale
+                    boxOrder.splice(draggedIndex, 1);
+                    
+                    // Inserisci nella nuova posizione
+                    const newTargetIndex = boxOrder.indexOf(targetKey);
+                    boxOrder.splice(newTargetIndex, 0, draggedKey);
+                    
+                    saveOrder();
+                    renderBoxes();
+                }
+                
+                this.classList.remove('drag-over');
+                return false;
+            }
+
+            // Search functionality
+            const searchBox = document.getElementById('searchBox');
+            const clearSearchBtn = document.getElementById('clearSearch');
+
+            searchBox.addEventListener('input', function(e) {
+                searchTerm = e.target.value.trim();
+                
+                if (searchTerm) {
+                    clearSearchBtn.classList.add('visible');
+                } else {
+                    clearSearchBtn.classList.remove('visible');
+                }
+                
+                renderBoxes();
+            });
+
+            clearSearchBtn.addEventListener('click', function() {
+                searchBox.value = '';
+                searchTerm = '';
+                this.classList.remove('visible');
+                renderBoxes();
+                searchBox.focus();
+            });
+
             // Ascolta i cambiamenti in tempo reale
             onValue(boxesRef, (snapshot) => {
                 document.getElementById('loading').style.display = 'none';
                 updateConnectionStatus(true);
                 
                 const data = snapshot.val();
-                const container = document.getElementById('boxesContainer');
-                const emptyState = document.getElementById('emptyState');
+                allBoxes = data || {};
                 
-                container.innerHTML = '';
-                
-                if (data) {
-                    container.style.display = 'grid';
-                    emptyState.style.display = 'none';
-                    
-                    Object.keys(data).forEach(key => {
-                        const box = data[key];
-                        const boxElement = document.createElement('div');
-                        boxElement.className = 'box';
-                        
-                        const date = new Date(box.timestamp).toLocaleString('it-IT');
-                        
-                        boxElement.innerHTML = `
-                            <div class="box-header">
-                                <div class="box-name">${escapeHtml(box.name)}</div>
-                                <div class="box-actions">
-                                    <button class="btn edit-btn" onclick="window.editBox('${key}')">✏️</button>
-                                    <button class="btn delete-btn" onclick="window.deleteBox('${key}')">🗑️</button>
-                                </div>
-                            </div>
-                            ${box.image ? `<img src="${box.image}" class="box-image" alt="${escapeHtml(box.name)}" onerror="this.style.display='none'">` : '<div class="box-image"></div>'}
-                            <div class="box-text">${escapeHtml(box.text) || 'Nessun testo'}</div>
-                            <div class="box-meta">
-                                📅 Creato: ${date}
-                                ${box.author ? `<br>👤 Autore: ${escapeHtml(box.author)}` : ''}
-                            </div>
-                        `;
-                        container.appendChild(boxElement);
-                    });
-                } else {
-                    container.style.display = 'none';
-                    emptyState.style.display = 'block';
-                }
+                renderBoxes();
             }, (error) => {
                 console.error('Errore Firebase:', error);
                 updateConnectionStatus(false);
@@ -552,8 +913,39 @@
             window.deleteBox = function(key) {
                 if (confirm('Sei sicuro di voler eliminare questo box? Questa azione è permanente.')) {
                     remove(ref(database, `boxes/${key}`));
+                    // Rimuovi dalla lista di ordine
+                    const index = boxOrder.indexOf(key);
+                    if (index > -1) {
+                        boxOrder.splice(index, 1);
+                        saveOrder();
+                    }
                 }
             };
+
+            window.expandImage = function(imageSrc) {
+                const modal = document.getElementById('imageModal');
+                const img = document.getElementById('expandedImage');
+                img.src = imageSrc;
+                modal.classList.add('active');
+            };
+
+            window.closeImageModal = function() {
+                document.getElementById('imageModal').classList.remove('active');
+            };
+
+            // Chiudi modal immagine con ESC o click
+            document.getElementById('imageModal').addEventListener('click', function(e) {
+                if (e.target === this || e.target.id === 'expandedImage') {
+                    window.closeImageModal();
+                }
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    window.closeImageModal();
+                    window.closeModal();
+                }
+            });
 
             // Salva box
             document.getElementById('boxForm').addEventListener('submit', function(e) {
@@ -562,18 +954,10 @@
                 const name = document.getElementById('boxName').value;
                 const text = document.getElementById('boxText').value;
                 
-                // Genera un nome autore casuale o usa uno esistente
-                let author = localStorage.getItem('boxManagerAuthor');
-                if (!author) {
-                    author = 'Utente_' + Math.random().toString(36).substr(2, 9);
-                    localStorage.setItem('boxManagerAuthor', author);
-                }
-                
                 const boxData = {
                     name: name,
                     text: text,
                     image: currentImageData || '',
-                    author: author,
                     timestamp: Date.now()
                 };
                 
